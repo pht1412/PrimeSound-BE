@@ -32,14 +32,11 @@ const userSchema = new mongoose.Schema({
     timestamps: true
 });
 
-userSchema.pre('save', async function(next) {
-    if (!this.isModified('password')) {
-        return next();
-    }
+// Hash ngoài pre('save') để tránh lỗi "next is not a function" với Mongoose 9 + async hook
+userSchema.statics.hashPassword = async function (plain) {
     const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-});
+    return bcrypt.hash(plain, salt);
+};
 
 userSchema.methods.comparePassword = async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);

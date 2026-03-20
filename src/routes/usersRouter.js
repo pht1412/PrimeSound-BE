@@ -108,10 +108,77 @@ router.patch('/me/password', auth, async (req, res) => {
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
 
-        user.password = newPassword;
+        user.password = await User.hashPassword(newPassword);
         await user.save();
 
         res.status(200).json({ message: 'Password updated successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// ==================== CRUD cho admin ====================
+
+// GET /api/v1/users - Lay tat ca users
+router.get('/', auth, async (req, res) => {
+    try {
+        const users = await User.find().select('-password');
+        res.status(200).json({ count: users.length, users });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// GET /api/v1/users/:id - Lay user theo ID
+router.get('/:id', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('-password');
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// PUT /api/v1/users/:id - Cap nhat user
+router.put('/:id', auth, async (req, res) => {
+    try {
+        const { name, email, role } = req.body;
+
+        const user = await User.findById(req.params.id);
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (name) user.name = name;
+        if (email) user.email = email;
+        if (role) user.role = role;
+
+        await user.save();
+
+        res.status(200).json({ message: 'User updated', user: user.toObject() });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// DELETE /api/v1/users/:id - Xoa user
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        await User.findByIdAndDelete(req.params.id);
+
+        res.status(200).json({ message: 'User deleted' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
