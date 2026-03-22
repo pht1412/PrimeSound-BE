@@ -22,4 +22,8 @@ const startServer = async () => {
     }
 };
 
+<<<<<<< HEAD
 startServer();
+=======
+startServer();
+>>>>>>> origin/feature/auth-and-profile-apis
