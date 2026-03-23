@@ -1,9 +1,10 @@
-import User from '../models/User.js';
-import { generateToken } from '../config/jwt.js';
-import { AppError } from '../utils/AppError.js';
+const User = require('../models/User');
+const { generateToken } = require('../config/jwt');
+const { AppError } = require('../utils/AppError');
 
 const DEFAULT_AVATAR = 'https://via.placeholder.com/150';
 
+// format dữ liệu trả về client
 const toPublicUser = (user) => ({
     _id: user._id,
     name: user.name,
@@ -12,7 +13,8 @@ const toPublicUser = (user) => ({
     role: user.role
 });
 
-export const registerUser = async ({ name, email, password }) => {
+// ===== REGISTER =====
+const registerUser = async ({ name, email, password }) => {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
         throw new AppError('Email already exists', 400);
@@ -39,7 +41,8 @@ export const registerUser = async ({ name, email, password }) => {
     };
 };
 
-export const loginUser = async ({ email, password }) => {
+// ===== LOGIN =====
+const loginUser = async ({ email, password }) => {
     const user = await User.findOne({ email });
     if (!user) {
         throw new AppError('Invalid email or password', 400);
@@ -57,4 +60,11 @@ export const loginUser = async ({ email, password }) => {
         token,
         user: toPublicUser(user)
     };
+};
+
+
+// ===== EXPORT =====
+module.exports = {
+    registerUser,
+    loginUser
 };

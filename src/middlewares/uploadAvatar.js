@@ -1,8 +1,11 @@
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { UPLOADS_DIR } from '../config/paths.js';
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
+// tự define lại (vì không dùng import)
+const UPLOADS_DIR = path.join(__dirname, '../uploads');
+
+// đảm bảo folder tồn tại
 if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
@@ -17,9 +20,9 @@ const storage = multer.diskStorage({
     }
 });
 
-export const uploadAvatar = multer({
+const uploadAvatar = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
     fileFilter: (req, file, cb) => {
         const allowedTypes = /jpeg|jpg|png|gif|webp/;
         const extname = allowedTypes.test(
@@ -34,3 +37,5 @@ export const uploadAvatar = multer({
         }
     }
 });
+
+module.exports = uploadAvatar;

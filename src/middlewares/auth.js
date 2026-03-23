@@ -1,10 +1,9 @@
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-import { JWT_SECRET } from '../config/jwt.js';
+const jwt = require('jsonwebtoken');
+const User = require('../models/User.js');
+const { JWT_SECRET } = require('../config/jwt.js');
 
-export { generateToken } from '../config/jwt.js';
-
-export const auth = async (req, res, next) => {
+/** Bắt buộc đăng nhập - trả 401 nếu không có token */
+const auth = async (req, res, next) => {
     try {
         const authHeader = req.header('Authorization');
 
@@ -29,3 +28,38 @@ export const auth = async (req, res, next) => {
         res.status(401).json({ message: 'Please authenticate' });
     }
 };
+
+/** Tùy chọn đăng nhập - nếu có token thì gán req.user, không có thì req.user = null */
+const optionalAuth = async (req, res, next) => {
+    try {
+        const authHeader = req.header('Authorization');
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            req.user = null;
+            return next();
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        const user = await User.findById(decoded._id).select('-password');
+
+        req.user = user || null;
+        req.token = user ? token : null;
+        next();
+    } catch (error) {
+        req.user = null;
+        next();
+    }
+};
+
+/** Yêu cầu role admin - dùng sau auth */
+const requireAdmin = (req, res, next) => {
+    if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+    }
+    next();
+};
+
+module.exports = { auth, optionalAuth, requireAdmin };

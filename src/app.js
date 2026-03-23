@@ -3,13 +3,13 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 
-const authRouter = require('./routes/authRouter');
-const usersRouter = require('./routes/usersRouter');
-const songRoutes = require('./routes/song.routes');
-const searchRoutes = require('./routes/search.route');
-const playlistRoutes = require('./routes/playlist.route');
+const authRouter = require('./routes/authRouter.js');
+const usersRouter = require('./routes/usersRouter.js');
+const songRoutes = require('./routes/song.routes.js');
+const searchRoutes = require('./routes/search.route.js');
+const playlistRoutes = require('./routes/playlist.route.js');
 
-const errorHandler = require('./middlewares/errorHandler');
+const errorHandler = require('./middlewares/errorHandler.js');
 
 dotenv.config();
 
@@ -23,7 +23,6 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // ================= UPLOAD CONFIG =================
-// 👉 tự define lại vì không dùng import
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 
 // serve static file

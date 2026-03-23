@@ -20,9 +20,9 @@ const searchAll = async (keyword, page, limit) => {
   const songQuery = {
     $or: [
       { title: { $regex: searchRegex } }, 
-      { artist: { $in: matchedArtistIds } } 
+      ...(matchedArtistIds.length > 0 ? [{ artist: { $in: matchedArtistIds } }] : [])
     ],
-    moderationStatus: 'approved' 
+    status: 'approved'
   };
 
   const [songs, totalSongs] = await Promise.all([

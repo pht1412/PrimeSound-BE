@@ -1,12 +1,12 @@
-import * as userService from '../services/userService.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+const userService = require('../services/userService.js');
+const { asyncHandler } = require('../utils/asyncHandler.js');
 
-export const getMe = asyncHandler(async (req, res) => {
+const getMe = asyncHandler(async (req, res) => {
     const user = await userService.getCurrentUser(req.user._id);
     res.status(200).json(user);
 });
 
-export const patchMe = asyncHandler(async (req, res) => {
+const patchMe = asyncHandler(async (req, res) => {
     const user = await userService.updateCurrentUserProfile(
         req.user._id,
         { name: req.body.name },
@@ -15,7 +15,7 @@ export const patchMe = asyncHandler(async (req, res) => {
     res.status(200).json(user);
 });
 
-export const patchPassword = asyncHandler(async (req, res) => {
+const patchPassword = asyncHandler(async (req, res) => {
     const { oldPassword, newPassword } = req.body;
     const result = await userService.changePassword(
         req.user._id,
@@ -27,17 +27,17 @@ export const patchPassword = asyncHandler(async (req, res) => {
 
 // --- Admin CRUD ---
 
-export const getAllUsers = asyncHandler(async (req, res) => {
+const getAllUsers = asyncHandler(async (req, res) => {
     const result = await userService.listUsers();
     res.status(200).json(result);
 });
 
-export const getUser = asyncHandler(async (req, res) => {
+const getUser = asyncHandler(async (req, res) => {
     const user = await userService.getUserById(req.params.id);
     res.status(200).json(user);
 });
 
-export const updateUser = asyncHandler(async (req, res) => {
+const updateUser = asyncHandler(async (req, res) => {
     const { name, email, role } = req.body;
     const result = await userService.updateUserById(req.params.id, {
         name,
@@ -47,7 +47,17 @@ export const updateUser = asyncHandler(async (req, res) => {
     res.status(200).json(result);
 });
 
-export const deleteUser = asyncHandler(async (req, res) => {
+const deleteUser = asyncHandler(async (req, res) => {
     const result = await userService.deleteUserById(req.params.id);
     res.status(200).json(result);
 });
+
+module.exports = {
+    getMe,
+    patchMe,
+    patchPassword,
+    getAllUsers,
+    getUser,
+    updateUser,
+    deleteUser
+};

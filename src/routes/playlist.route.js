@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const playlistController = require('../controllers/playlist.controller');
-const { mockAuth } = require('../middlewares/auth.middleware');
+const { auth } = require('../middlewares/auth');
 
-// Gắn mockAuth vào tất cả các route của playlist để bắt buộc "đăng nhập"
-router.use(mockAuth);
+// Bắt buộc đăng nhập cho tất cả route playlist
+router.use(auth);
 
 router.post('/', playlistController.create);
 router.patch('/:id', playlistController.update);

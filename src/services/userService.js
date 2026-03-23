@@ -1,10 +1,10 @@
-import fs from 'fs';
-import path from 'path';
-import User from '../models/User.js';
-import { UPLOADS_DIR } from '../config/paths.js';
-import { AppError } from '../utils/AppError.js';
+const fs = require('fs');
+const path = require('path');
+const User = require('../models/User.js');
+const { UPLOADS_DIR } = require('../config/paths.js');
+const { AppError } = require('../utils/AppError.js');
 
-export const getCurrentUser = async (userId) => {
+const getCurrentUser = async (userId) => {
     const user = await User.findById(userId).select('-password');
     if (!user) {
         throw new AppError('User not found', 404);
@@ -12,7 +12,7 @@ export const getCurrentUser = async (userId) => {
     return user;
 };
 
-export const updateCurrentUserProfile = async (userId, { name }, file) => {
+const updateCurrentUserProfile = async (userId, { name }, file) => {
     const updates = {};
 
     if (name) {
@@ -50,7 +50,7 @@ export const updateCurrentUserProfile = async (userId, { name }, file) => {
     return user;
 };
 
-export const changePassword = async (userId, oldPassword, newPassword) => {
+const changePassword = async (userId, oldPassword, newPassword) => {
     if (!oldPassword || !newPassword) {
         throw new AppError('Please provide old and new password', 400);
     }
@@ -73,12 +73,12 @@ export const changePassword = async (userId, oldPassword, newPassword) => {
 
 // --- Admin / danh sách ---
 
-export const listUsers = async () => {
+const listUsers = async () => {
     const users = await User.find().select('-password');
     return { count: users.length, users };
 };
 
-export const getUserById = async (id) => {
+const getUserById = async (id) => {
     const user = await User.findById(id).select('-password');
     if (!user) {
         throw new AppError('User not found', 404);
@@ -86,7 +86,7 @@ export const getUserById = async (id) => {
     return user;
 };
 
-export const updateUserById = async (id, { name, email, role }) => {
+const updateUserById = async (id, { name, email, role }) => {
     const user = await User.findById(id);
     if (!user) {
         throw new AppError('User not found', 404);
@@ -102,7 +102,7 @@ export const updateUserById = async (id, { name, email, role }) => {
     return { message: 'User updated', user: safe };
 };
 
-export const deleteUserById = async (id) => {
+const deleteUserById = async (id) => {
     const user = await User.findById(id);
     if (!user) {
         throw new AppError('User not found', 404);
@@ -110,4 +110,14 @@ export const deleteUserById = async (id) => {
 
     await User.findByIdAndDelete(id);
     return { message: 'User deleted' };
+};
+
+module.exports = {
+    getCurrentUser,
+    updateCurrentUserProfile,
+    changePassword,
+    listUsers,
+    getUserById,
+    updateUserById,
+    deleteUserById
 };

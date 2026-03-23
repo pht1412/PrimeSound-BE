@@ -1,9 +1,14 @@
 const express = require('express');
 const router = express.Router();
 
-const auth = require('../middlewares/auth');
+// ✅ destructuring đúng
+const { auth } = require('../middlewares/auth');
+
+// ⚠️ uploadAvatar thường export trực tiếp
 const uploadAvatar = require('../middlewares/uploadAvatar');
+
 const userController = require('../controllers/userController');
+
 
 // ===== USER PROFILE =====
 router.get('/me', auth, userController.getMe);
@@ -26,4 +31,5 @@ router.put('/:id', auth, userController.updateUser);
 router.delete('/:id', auth, userController.deleteUser);
 
 
+// ===== EXPORT =====
 module.exports = router;

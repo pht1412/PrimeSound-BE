@@ -1,18 +1,31 @@
 const path = require('path');
 const Song = require('../models/song.model');
+const Artist = require('../models/artist.model');
+
+const getOrCreateDefaultArtist = async (artistName) => {
+    const name = artistName || 'Unknown Artist';
+    let artist = await Artist.findOne({ name });
+    if (!artist) {
+        artist = await Artist.create({ name, avatarUrl: '' });
+    }
+    return artist._id;
+};
 
 exports.createSong = async (songData, uploadedBy, audioFile, coverFile) => {
+    const artistId = await getOrCreateDefaultArtist(songData.artist);
+
     const newSong = new Song({
         title: songData.title,
-        artist: songData.artist,
-        genre: songData.genre,
+        artist: artistId,
+        genre: songData.genre || '',
         uploadedBy: uploadedBy,
         audioUrl: audioFile.path,
         coverUrl: coverFile.path,
         status: 'pending'
     });
 
-    return await newSong.save();
+    const saved = await newSong.save();
+    return await Song.findById(saved._id).populate('artist', 'name avatarUrl');
 };
 
 exports.getSongsByUser = async (userId) => {
@@ -99,7 +112,29 @@ exports.incrementPlayCount = async (songId) => {
 
 exports.getLastestSongsPublic = async () => {
     return await Song.find({ status: 'approved' }).sort({ createdAt: -1 }).limit(10);
-}
+};
+
+exports.getAllApprovedSongs = async (page = 1, limit = 20) => {
+    const skip = (page - 1) * limit;
+    const [songs, total] = await Promise.all([
+        Song.find({ status: 'approved' })
+            .populate('artist', 'name avatarUrl')
+            .select('_id title genre audioUrl coverUrl duration playCount artist createdAt')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+        Song.countDocuments({ status: 'approved' })
+    ]);
+    return {
+        data: songs,
+        pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            totalItems: total,
+            itemsPerPage: limit
+        }
+    };
+};
 
 exports.getTrendingSongsPublic = async () => {
     return await Song.find({ status: 'approved' }).sort({ playCount: -1 }).limit(10);
