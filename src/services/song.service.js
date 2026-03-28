@@ -19,8 +19,8 @@ exports.createSong = async (songData, uploadedBy, audioFile, coverFile) => {
         artist: artistId,
         genre: songData.genre || '',
         uploadedBy: uploadedBy,
-        audioUrl: audioFile.path,
-        coverUrl: coverFile.path,
+        audioUrl: `/uploads/${audioFile.filename}`,
+        coverUrl: coverFile ? `/uploads/${coverFile.filename}` : '',
         status: 'pending'
     });
 
@@ -84,7 +84,7 @@ exports.getSongDetails = async (songId, user) => {
 
 exports.getSongStreamData = async (songId, user) => {
     const song = await Song.findById(songId);
-    
+
     try {
         checkSongAccess(song, user);
     } catch (error) {
@@ -107,7 +107,7 @@ exports.incrementPlayCount = async (songId) => {
     song.playCount += 1;
     await song.save();
 
-    return true; 
+    return true;
 };
 
 exports.getLastestSongsPublic = async () => {
