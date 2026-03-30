@@ -45,27 +45,34 @@ const softDeletePlaylist = async (playlistId, userId) => {
 // ... (các hàm create, update, delete giữ nguyên)
 
 // 4. Lấy danh sách TẤT CẢ Playlist của User (Có phân trang)
+// 4. Lấy danh sách TẤT CẢ Playlist của User (Có phân trang)
 const getUserPlaylists = async (userId, page = 1, limit = 10) => {
   const skip = (page - 1) * limit;
-  const query = { user: userId, isDeleted: false }; // Tuyệt đối không lấy playlist đã xóa mềm
+  const query = { user: userId, isDeleted: false }; 
 
   const [playlists, total] = await Promise.all([
     Playlist.find(query)
-      .select('_id name description createdAt songs') // Lấy mảng songs chỉ để đếm số lượng
-      .sort({ createdAt: -1 }) // Playlist mới tạo lên đầu
+      .select('_id name description createdAt songs')
+      .populate('songs.song', 'coverUrl') // BƯỚC QUAN TRỌNG: Populate để lấy ảnh bìa
+      .sort({ createdAt: -1 }) 
       .skip(skip)
       .limit(limit),
     Playlist.countDocuments(query)
   ]);
 
-  // Tối ưu Payload: Chỉ trả về số lượng bài hát thay vì cả một mảng data khổng lồ
-  const formattedPlaylists = playlists.map(pl => ({
-    _id: pl._id,
-    name: pl.name,
-    description: pl.description,
-    createdAt: pl.createdAt,
-    songCount: pl.songs.length // Phục vụ UI hiển thị "Playlist này có 15 bài hát"
-  }));
+  const formattedPlaylists = playlists.map(pl => {
+    // Tìm ảnh của bài hát đầu tiên (nếu có bài hát và chưa bị xóa khỏi hệ thống)
+    const firstSongCover = pl.songs.length > 0 && pl.songs[0].song ? pl.songs[0].song.coverUrl : null;
+
+    return {
+      _id: pl._id,
+      name: pl.name,
+      description: pl.description,
+      createdAt: pl.createdAt,
+      songCount: pl.songs.length,
+      firstSongCover: firstSongCover // Đóng gói ảnh bìa gửi về cho React
+    };
+  });
 
   return {
     data: formattedPlaylists,
