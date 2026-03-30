@@ -190,10 +190,7 @@ exports.incrementPlayCount = async (songId) => {
 exports.getLastestSongsPublic = async () => {
     return await Song.find({ status: 'approved' })
         .populate('artist', 'name avatarUrl')
-<<<<<<< HEAD
         .populate('uploadedBy', 'name')
-=======
->>>>>>> d95d8b86f8ea9242948ecde3d6dfcad4abe06cf3
         .sort({ createdAt: -1 })
         .limit(10);
 };
@@ -224,10 +221,7 @@ exports.getAllApprovedSongs = async (page = 1, limit = 20) => {
 exports.getTrendingSongsPublic = async () => {
     return await Song.find({ status: 'approved' })
         .populate('artist', 'name avatarUrl')
-<<<<<<< HEAD
         .populate('uploadedBy', 'name')
-=======
->>>>>>> d95d8b86f8ea9242948ecde3d6dfcad4abe06cf3
         .sort({ playCount: -1 })
         .limit(10);
 };
