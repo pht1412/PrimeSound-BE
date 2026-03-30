@@ -8,7 +8,10 @@ const usersRouter = require('./routes/usersRouter.js');
 const songRoutes = require('./routes/song.routes.js');
 const searchRoutes = require('./routes/search.route.js');
 const playlistRoutes = require('./routes/playlist.route.js');
+<<<<<<< HEAD
 const notificationRoutes = require('./routes/notification.route.js');
+=======
+>>>>>>> 7d7c2a4ba4d84aa870bd5df036a4019d9ff0a30a
 const favoriteRoutes = require('./routes/favorite.routes.js');
 
 const errorHandler = require('./middlewares/errorHandler.js');
@@ -37,7 +40,10 @@ app.use('/api/v1/users', usersRouter);
 app.use('/api/v1/songs', songRoutes);
 app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/playlists', playlistRoutes);
+<<<<<<< HEAD
 app.use('/api/v1/notifications', notificationRoutes);
+=======
+>>>>>>> 7d7c2a4ba4d84aa870bd5df036a4019d9ff0a30a
 app.use('/api/v1/favorites', favoriteRoutes);
 
 // ================= TEST ROUTE =================
