@@ -8,6 +8,7 @@ const usersRouter = require('./routes/usersRouter.js');
 const songRoutes = require('./routes/song.routes.js');
 const searchRoutes = require('./routes/search.route.js');
 const playlistRoutes = require('./routes/playlist.route.js');
+const followRoutes = require('./routes/follow.routes.js');
 
 const errorHandler = require('./middlewares/errorHandler.js');
 
@@ -35,6 +36,7 @@ app.use('/api/v1/users', usersRouter);
 app.use('/api/v1/songs', songRoutes);
 app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/playlists', playlistRoutes);
+app.use('/api/v1/follow', followRoutes);
 
 
 // ================= TEST ROUTE =================
