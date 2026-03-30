@@ -41,17 +41,11 @@ exports.createSong = async (songData, uploadedBy, audioFile, coverFile) => {
         artist: artistId,
         genre: songData.genre || '',
         uploadedBy: uploadedBy,
-<<<<<<< HEAD
         audioUrl: `/uploads/${audioFile.filename}`,
         coverUrl: coverFile ? `/uploads/${coverFile.filename}` : '',
-=======
         audioUrl: audioFile.path,
         coverUrl: coverFile.path,
         duration: duration, // Lưu thời lượng đã tính
-<<<<<<< HEAD
->>>>>>> 0e6b5b8 (feat(favorite): implement like/unlike APIs and setup CI pipeline)
-=======
->>>>>>> 7d7c2a4ba4d84aa870bd5df036a4019d9ff0a30a
         status: 'pending'
     });
 
