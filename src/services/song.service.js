@@ -1,4 +1,6 @@
 const path = require('path');
+const fs = require('fs');
+const { parseFile } = require('music-metadata');
 const Song = require('../models/song.model');
 const Artist = require('../models/artist.model');
 
@@ -11,8 +13,28 @@ const getOrCreateDefaultArtist = async (artistName) => {
     return artist._id;
 };
 
+// Hàm tính toán thời lượng bài hát từ file âm thanh
+const calculateSongDuration = async (audioFilePath) => {
+    try {
+        if (!fs.existsSync(audioFilePath)) {
+            console.warn(`Audio file not found: ${audioFilePath}`);
+            return 0;
+        }
+
+        const metadata = await parseFile(audioFilePath);
+        const duration = metadata.format.duration || 0; // Thời lượng tính bằng giây
+        return Math.round(duration); // Làm tròn đến số nguyên
+    } catch (error) {
+        console.error(`Error calculating duration for ${audioFilePath}:`, error.message);
+        return 0;
+    }
+};
+
 exports.createSong = async (songData, uploadedBy, audioFile, coverFile) => {
     const artistId = await getOrCreateDefaultArtist(songData.artist);
+    
+    // Tính toán thời lượng bài hát
+    const duration = await calculateSongDuration(audioFile.path);
 
     const newSong = new Song({
         title: songData.title,
@@ -21,15 +43,20 @@ exports.createSong = async (songData, uploadedBy, audioFile, coverFile) => {
         uploadedBy: uploadedBy,
         audioUrl: audioFile.path,
         coverUrl: coverFile.path,
+        duration: duration, // Lưu thời lượng đã tính
         status: 'pending'
     });
 
     const saved = await newSong.save();
-    return await Song.findById(saved._id).populate('artist', 'name avatarUrl');
+    return await Song.findById(saved._id)
+        .populate('artist', 'name avatarUrl')
+        .populate('uploadedBy', 'name');
 };
 
 exports.getSongsByUser = async (userId) => {
-    return await Song.find({ uploadedBy: userId });
+    return await Song.find({ uploadedBy: userId })
+        .populate('artist', 'name avatarUrl')
+        .populate('uploadedBy', 'name');
 };
 
 exports.getSongsByStatusAdmin = async (status) => {
@@ -38,7 +65,9 @@ exports.getSongsByStatusAdmin = async (status) => {
         query.status = status;
     }
 
-    return await Song.find(query);
+    return await Song.find(query)
+        .populate('artist', 'name avatarUrl')
+        .populate('uploadedBy', 'name');
 };
 
 exports.updateSongStatusAdmin = async (songId, status, reason) => {
@@ -51,7 +80,9 @@ exports.updateSongStatusAdmin = async (songId, status, reason) => {
         updateData.rejectReason = reason;
     }
 
-    const song = await Song.findByIdAndUpdate(songId, updateData, { new: true });
+    const song = await Song.findByIdAndUpdate(songId, updateData, { new: true })
+        .populate('artist', 'name avatarUrl')
+        .populate('uploadedBy', 'name');
     if (!song) {
         throw new Error('Song not found');
     }
@@ -76,7 +107,9 @@ const checkSongAccess = (song, user) => {
 };
 
 exports.getSongDetails = async (songId, user) => {
-    const song = await Song.findById(songId);
+    const song = await Song.findById(songId)
+        .populate('artist', 'name avatarUrl')
+        .populate('uploadedBy', 'name');
     checkSongAccess(song, user);
 
     return song;
@@ -111,7 +144,11 @@ exports.incrementPlayCount = async (songId) => {
 };
 
 exports.getLastestSongsPublic = async () => {
-    return await Song.find({ status: 'approved' }).sort({ createdAt: -1 }).limit(10);
+    return await Song.find({ status: 'approved' })
+        .populate('artist', 'name avatarUrl')
+        .populate('uploadedBy', 'name')
+        .sort({ createdAt: -1 })
+        .limit(10);
 };
 
 exports.getAllApprovedSongs = async (page = 1, limit = 20) => {
@@ -119,7 +156,8 @@ exports.getAllApprovedSongs = async (page = 1, limit = 20) => {
     const [songs, total] = await Promise.all([
         Song.find({ status: 'approved' })
             .populate('artist', 'name avatarUrl')
-            .select('_id title genre audioUrl coverUrl duration playCount artist createdAt')
+            .populate('uploadedBy', 'name')
+            .select('_id title genre audioUrl coverUrl duration playCount artist uploadedBy createdAt')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),
@@ -137,12 +175,34 @@ exports.getAllApprovedSongs = async (page = 1, limit = 20) => {
 };
 
 exports.getTrendingSongsPublic = async () => {
-    return await Song.find({ status: 'approved' }).sort({ playCount: -1 }).limit(10);
+    return await Song.find({ status: 'approved' })
+        .populate('artist', 'name avatarUrl')
+        .populate('uploadedBy', 'name')
+        .sort({ playCount: -1 })
+        .limit(10);
 };
 
 exports.getDiscoverySongsPublic = async () => {
     return await Song.aggregate([
         { $match: { status: 'approved' } },
-        { $sample: { size: 10 } }
+        { $sample: { size: 10 } },
+        { $lookup: { from: 'artists', localField: 'artist', foreignField: '_id', as: 'artist' } },
+        { $lookup: { from: 'users', localField: 'uploadedBy', foreignField: '_id', as: 'uploadedBy' } },
+        { $unwind: { path: '$artist', preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: '$uploadedBy', preserveNullAndEmptyArrays: true } },
+        { $project: { 
+            _id: 1,
+            title: 1,
+            genre: 1,
+            audioUrl: 1,
+            coverUrl: 1,
+            duration: 1,
+            playCount: 1,
+            status: 1,
+            createdAt: 1,
+            'artist.name': 1,
+            'artist.avatarUrl': 1,
+            'uploadedBy.name': 1
+        } }
     ]);
 };

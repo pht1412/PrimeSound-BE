@@ -17,6 +17,7 @@ router.post(
     upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'cover', maxCount: 1 }]),
     songController.uploadSong
 );
+
 router.get('/my-songs', auth, songController.getMySongs);
 
 // Admin routes

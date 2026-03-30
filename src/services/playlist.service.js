@@ -1,7 +1,6 @@
 const Playlist = require('../models/playlist.model');
 const Song = require('../models/song.model');
 
-
 // 1. Tạo mới Playlist
 const createPlaylist = async (userId, data) => {
   const newPlaylist = await Playlist.create({
