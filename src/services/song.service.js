@@ -159,7 +159,16 @@ exports.getSongStreamData = async (songId, user) => {
         throw new Error('Unauthorized to stream this song');
     }
 
-    return path.resolve(song.audioUrl);
+// ================= BẮT ĐẦU SỬA LỖI ĐƯỜNG DẪN =================
+    // Dùng path.basename để chỉ trích xuất đúng cái tên file (VD: 'bai-hat.mp3') từ chuỗi URL
+    const filename = path.basename(song.audioUrl);
+    
+    // Nối ghép thủ công tên file với thư mục uploads chuẩn của dự án
+    // __dirname hiện tại đang ở thư mục 'services', nên dùng '..' để lùi ra ngoài rồi mới vào 'uploads'
+    const audioPath = path.join(__dirname, '..', 'uploads', filename);
+
+    return audioPath;
+    // ================= KẾT THÚC SỬA LỖI =================};
 };
 
 exports.incrementPlayCount = async (songId) => {
