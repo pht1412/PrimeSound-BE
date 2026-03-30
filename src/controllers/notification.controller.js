@@ -1,5 +1,6 @@
 const notificationEvents = require('../events/notificationEvents.js');
 const Notification = require('../models/notification.model.js');
+const Song = require('../models/song.model.js'); 
 
 const simulateNotification = async (req, res) => {
     try {
@@ -43,49 +44,50 @@ const simulateNotification = async (req, res) => {
     }
 };
 
-// 1. API Lấy danh sách thông báo (Có phân trang)
+// 1. API Lấy danh sách thông báo (Có phân trang & Đính kèm thông tin bài hát)
 const getNotifications = async (req, res) => {
     try {
-        // Lấy userId từ token (nếu đã có middleware xác thực) 
-        // Hoặc lấy tạm từ query để dễ test trên Postman khi chưa ghép Auth
-        const userId = req.user ? req.user.id : req.query.userId; 
+        const userId = req.user ? req.user._id : req.query.userId; 
 
         if (!userId) {
             return res.status(400).json({ success: false, message: 'Thiếu thông tin user ID.' });
         }
 
-        // Thiết lập phân trang
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        // Truy vấn DB
+        // BƯỚC A: Lấy thông báo và Tên người gửi (Sửa 'username' thành 'name')
+        // Dùng .lean() để chuyển data Mongoose thành mảng JSON thuần túy, giúp ta dễ dàng thêm thuộc tính mới
         const notifications = await Notification.find({ recipientId: userId })
-            .sort({ createdAt: -1 }) // Mới nhất lên đầu
+            .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            // Populate để lấy thêm thông tin người gửi (ví dụ: lấy username và avatar)
-            .populate('senderId', 'username avatar'); 
+            .populate('senderId', 'name avatar') 
+            .lean(); 
 
-        // Đếm tổng số thông báo chưa đọc
         const unreadCount = await Notification.countDocuments({ 
             recipientId: userId, 
             isRead: false 
         });
-
-        // Đếm tổng số thông báo để Front-end làm phân trang
         const total = await Notification.countDocuments({ recipientId: userId });
+
+        // BƯỚC B: Tìm thông tin bài hát (Cover, Title) dựa vào entityId
+        for (let noti of notifications) {
+            // Chỉ tìm bài hát cho các loại thông báo liên quan đến bài hát
+            if (['like_song', 'comment', 'new_upload', 'repost'].includes(noti.type)) {
+                // entityId lúc này chính là ID của bài hát
+                const songInfo = await Song.findById(noti.entityId).select('title coverUrl').lean();
+                if (songInfo) {
+                    noti.entityDetails = songInfo; // Gắn thêm 1 cục data chứa ảnh và tên bài
+                }
+            }
+        }
 
         res.status(200).json({
             success: true,
             data: notifications,
-            meta: {
-                total,
-                page,
-                limit,
-                totalPages: Math.ceil(total / limit),
-                unreadCount
-            }
+            meta: { total, page, limit, totalPages: Math.ceil(total / limit), unreadCount }
         });
 
     } catch (error) {

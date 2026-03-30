@@ -1,6 +1,8 @@
 const Favorite = require('../models/favorite.model');
 const Song = require('../models/song.model');
+const notificationEvents = require('../events/notificationEvents.js');
 
+// 1. Thả tim (Like)
 // 1. Thả tim (Like)
 exports.likeSong = async (userId, songId) => {
     const songExists = await Song.findById(songId);
@@ -8,6 +10,19 @@ exports.likeSong = async (userId, songId) => {
 
     try {
         const newLike = await Favorite.create({ user: userId, song: songId });
+        
+        // ================= BẮT ĐẦU: TÍCH HỢP THÔNG BÁO =================
+        // Chỉ bắn thông báo nếu người thả tim KHÔNG PHẢI là người upload bài hát đó
+        if (userId.toString() !== songExists.uploadedBy.toString()) {
+            notificationEvents.emit('create_notification', {
+                recipientId: songExists.uploadedBy, // Người nhận: Chủ bài hát
+                senderId: userId,                   // Người gửi: Người vừa thả tim
+                type: 'like_song',                  // Loại thông báo
+                entityId: songId                    // ID bài hát được like
+            });
+        }
+        // ================= KẾT THÚC: TÍCH HỢP THÔNG BÁO =================
+
         return newLike;
     } catch (error) {
         if (error.code === 11000) {

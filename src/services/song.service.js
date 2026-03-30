@@ -3,6 +3,7 @@ const fs = require('fs');
 const { parseFile } = require('music-metadata');
 const Song = require('../models/song.model');
 const Artist = require('../models/artist.model');
+const notificationEvents = require('../events/notificationEvents.js');
 
 const getOrCreateDefaultArtist = async (artistName) => {
     const name = artistName || 'Unknown Artist';
@@ -41,15 +42,14 @@ exports.createSong = async (songData, uploadedBy, audioFile, coverFile) => {
         artist: artistId,
         genre: songData.genre || '',
         uploadedBy: uploadedBy,
-        audioUrl: `/uploads/${audioFile.filename}`,
+        audioUrl: `/uploads/${audioFile.filename}`, // Ghi đè url chuẩn cho DB
         coverUrl: coverFile ? `/uploads/${coverFile.filename}` : '',
-        audioUrl: audioFile.path,
-        coverUrl: coverFile.path,
-        duration: duration, // Lưu thời lượng đã tính
+        duration: duration,
         status: 'pending'
     });
 
     const saved = await newSong.save();
+
     return await Song.findById(saved._id)
         .populate('artist', 'name avatarUrl')
         .populate('uploadedBy', 'name');
@@ -88,6 +88,39 @@ exports.updateSongStatusAdmin = async (songId, status, reason) => {
     if (!song) {
         throw new Error('Song not found');
     }
+    // ================= BẮT ĐẦU: LOGIC THÔNG BÁO KHI ADMIN DUYỆT BÀI =================
+    // Chỉ kích hoạt thông báo nếu trạng thái mới được chuyển thành 'approved'
+    if (status === 'approved') {
+        try {
+            let followerIds = [];
+            const isMockFollowersEnabled = process.env.MOCK_FOLLOWERS === 'true';
+
+            if (isMockFollowersEnabled) {
+                // Giả lập ID người theo dõi để test
+                const testFollowerId = process.env.TEST_FOLLOWER_ID;
+                if (testFollowerId) followerIds.push(testFollowerId);
+                console.log(`[Admin Approve] Giả lập gửi thông báo new_upload cho follower: ${testFollowerId}`);
+            } else {
+                // TODO: Logic thật lấy danh sách follower sau này
+            }
+
+            // Lấy ID của người đã upload bài hát (vì đã populate nên cần gọi ._id)
+            const uploaderId = song.uploadedBy._id;
+
+            // Phát thông báo cho tất cả followers
+            followerIds.forEach(followerId => {
+                notificationEvents.emit('create_notification', {
+                    recipientId: followerId,  
+                    senderId: uploaderId,     
+                    type: 'new_upload',
+                    entityId: song._id       
+                });
+            });
+        } catch (notifyError) {
+            console.error('Lỗi khi phát thông báo duyệt bài:', notifyError.message);
+        }
+    }
+    // ================= KẾT THÚC: LOGIC THÔNG BÁO =================
 
     return song;
 };

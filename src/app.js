@@ -10,6 +10,7 @@ const searchRoutes = require('./routes/search.route.js');
 const playlistRoutes = require('./routes/playlist.route.js');
 const notificationRoutes = require('./routes/notification.route.js');
 const favoriteRoutes = require('./routes/favorite.routes.js');
+const repostRouter = require('./routes/repost.route.js');
 
 const errorHandler = require('./middlewares/errorHandler.js');
 
@@ -39,6 +40,8 @@ app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/playlists', playlistRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/favorites', favoriteRoutes);
+app.use('/api/v1/reposts', repostRouter);
+
 
 // ================= TEST ROUTE =================
 app.get('/', (req, res) => {

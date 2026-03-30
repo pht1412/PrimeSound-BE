@@ -21,9 +21,11 @@ const seedData = async () => {
     // 2. Tạo một Role và User ảo để thỏa mãn schema
     const roleUser = await Role.create({ roleName: 'user' });
     const dummyUser = await User.create({
-      role: roleUser._id,
+      name: 'admin',
+      role: 'admin',
       email: 'admin@primesound.vn',
-      passwordHash: 'hashed_password_ảo',
+      password: "123456",
+      passwordHash: '123456',
       fullName: 'PrimeSound Admin'
     });
 
