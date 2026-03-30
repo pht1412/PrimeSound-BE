@@ -76,7 +76,7 @@ const checkSongAccess = (song, user) => {
 };
 
 exports.getSongDetails = async (songId, user) => {
-    const song = await Song.findById(songId);
+    const song = await Song.findById(songId).populate('artist', 'name avatarUrl');
     checkSongAccess(song, user);
 
     return song;
@@ -111,7 +111,10 @@ exports.incrementPlayCount = async (songId) => {
 };
 
 exports.getLastestSongsPublic = async () => {
-    return await Song.find({ status: 'approved' }).sort({ createdAt: -1 }).limit(10);
+    return await Song.find({ status: 'approved' })
+        .populate('artist', 'name avatarUrl')
+        .sort({ createdAt: -1 })
+        .limit(10);
 };
 
 exports.getAllApprovedSongs = async (page = 1, limit = 20) => {
@@ -137,12 +140,22 @@ exports.getAllApprovedSongs = async (page = 1, limit = 20) => {
 };
 
 exports.getTrendingSongsPublic = async () => {
-    return await Song.find({ status: 'approved' }).sort({ playCount: -1 }).limit(10);
+    return await Song.find({ status: 'approved' })
+        .populate('artist', 'name avatarUrl')
+        .sort({ playCount: -1 })
+        .limit(10);
 };
 
 exports.getDiscoverySongsPublic = async () => {
-    return await Song.aggregate([
+    const sampledSongs = await Song.aggregate([
         { $match: { status: 'approved' } },
         { $sample: { size: 10 } }
     ]);
+
+    const songIds = sampledSongs.map((song) => song._id);
+    const populatedSongs = await Song.find({ _id: { $in: songIds } })
+        .populate('artist', 'name avatarUrl');
+
+    const songMap = new Map(populatedSongs.map((song) => [song._id.toString(), song]));
+    return songIds.map((songId) => songMap.get(songId.toString())).filter(Boolean);
 };
