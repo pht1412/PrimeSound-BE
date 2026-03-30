@@ -1,6 +1,8 @@
 const User = require('../models/User.js');
-const mongoose = require('mongoose');
 const { AppError } = require('../utils/AppError.js');
+
+const hasFollowing = (user, targetId) =>
+    (user.following || []).some((id) => id.toString() === targetId.toString());
 
 const followUser = async (currentUserId, targetUserId) => {
     if (currentUserId.toString() === targetUserId.toString()) {
@@ -13,10 +15,16 @@ const followUser = async (currentUserId, targetUserId) => {
     }
 
     const currentUser = await User.findById(currentUserId);
-    
-    if (currentUser.following.includes(targetUserId)) {
+    if (!currentUser) {
+        throw new AppError('Người dùng không tồn tại', 404);
+    }
+
+    if (hasFollowing(currentUser, targetUserId)) {
         throw new AppError('Bạn đã theo dõi người này rồi', 400);
     }
+
+    if (!currentUser.following) currentUser.following = [];
+    if (!targetUser.followers) targetUser.followers = [];
 
     currentUser.following.push(targetUserId);
     targetUser.followers.push(currentUserId);
@@ -37,15 +45,18 @@ const unfollowUser = async (currentUserId, targetUserId) => {
     }
 
     const currentUser = await User.findById(currentUserId);
-    
-    if (!currentUser.following.includes(targetUserId)) {
+    if (!currentUser) {
+        throw new AppError('Người dùng không tồn tại', 404);
+    }
+
+    if (!hasFollowing(currentUser, targetUserId)) {
         throw new AppError('Bạn chưa theo dõi người này', 400);
     }
 
-    currentUser.following = currentUser.following.filter(
+    currentUser.following = (currentUser.following || []).filter(
         id => id.toString() !== targetUserId.toString()
     );
-    targetUser.followers = targetUser.followers.filter(
+    targetUser.followers = (targetUser.followers || []).filter(
         id => id.toString() !== currentUserId.toString()
     );
 
@@ -63,8 +74,9 @@ const getFollowers = async (userId, page = 1, limit = 20) => {
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
     
-    const followers = user.followers.slice(startIndex, endIndex);
-    const total = user.followers.length;
+    const list = user.followers || [];
+    const followers = list.slice(startIndex, endIndex);
+    const total = list.length;
 
     return {
         count: total,
@@ -83,8 +95,9 @@ const getFollowing = async (userId, page = 1, limit = 20) => {
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
     
-    const following = user.following.slice(startIndex, endIndex);
-    const total = user.following.length;
+    const list = user.following || [];
+    const following = list.slice(startIndex, endIndex);
+    const total = list.length;
 
     return {
         count: total,
@@ -104,9 +117,7 @@ const getFollowStatus = async (currentUserId, targetUserId) => {
         return { isFollowing: false };
     }
     
-    const isFollowing = currentUser.following.some(
-        id => id.toString() === targetUserId.toString()
-    );
+    const isFollowing = hasFollowing(currentUser, targetUserId);
     
     return { isFollowing };
 };
