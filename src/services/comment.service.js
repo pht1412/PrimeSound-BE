@@ -1,5 +1,6 @@
 const Comment = require('../models/comment.model');
 const Song = require('../models/song.model');
+const notificationEvents = require('../events/notificationEvents');
 
 const ensureSongExists = async (songId) => {
   const song = await Song.findById(songId).select('_id');
@@ -41,18 +42,39 @@ const getSongComments = async (songId, currentUserId = null) => {
 };
 
 const createComment = async (songId, userId, content) => {
-  await ensureSongExists(songId);
+  // 1. SỬA LẠI ĐOẠN NÀY: Lấy thêm trường uploadedBy để biết ai là chủ bài hát
+  const song = await Song.findById(songId).select('_id uploadedBy');
+  if (!song) {
+    throw new Error('Song not found');
+  }
 
   const trimmedContent = content?.trim();
   if (!trimmedContent) {
     throw new Error('Comment content is required');
   }
 
+  // 2. Tạo bình luận
   const comment = await Comment.create({
     song: songId,
     user: userId,
     content: trimmedContent,
   });
+
+  // ================= BẮT ĐẦU TÍCH HỢP THÔNG BÁO =================
+  // Nếu bài hát có chủ và người bình luận KHÔNG PHẢI là chủ bài hát
+  if (song.uploadedBy && userId.toString() !== song.uploadedBy.toString()) {
+    try {
+      notificationEvents.emit('create_notification', {
+        recipientId: song.uploadedBy, // Gửi cho chủ bài hát
+        senderId: userId,             // Người vừa bình luận
+        type: 'comment',              // Loại thông báo: comment
+        entityId: songId              // Đính kèm ID bài hát để Front-end lấy ảnh bìa
+      });
+    } catch (notifyError) {
+      console.error('Lỗi khi phát thông báo comment:', notifyError.message);
+    }
+  }
+  // ================= KẾT THÚC TÍCH HỢP THÔNG BÁO =================
 
   const populatedComment = await Comment.findById(comment._id).populate('user', 'name avatar');
   return mapComment(populatedComment, userId);

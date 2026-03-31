@@ -1,8 +1,10 @@
+// src/services/song.service.js
 const path = require('path');
 const fs = require('fs');
 const { parseFile } = require('music-metadata');
 const Song = require('../models/song.model');
 const Artist = require('../models/artist.model');
+const User = require('../models/User'); // BỔ SUNG: Import model User
 const notificationEvents = require('../events/notificationEvents.js');
 
 const getOrCreateDefaultArtist = async (artistName) => {
@@ -23,8 +25,8 @@ const calculateSongDuration = async (audioFilePath) => {
         }
 
         const metadata = await parseFile(audioFilePath);
-        const duration = metadata.format.duration || 0; // Thời lượng tính bằng giây
-        return Math.round(duration); // Làm tròn đến số nguyên
+        const duration = metadata.format.duration || 0; 
+        return Math.round(duration); 
     } catch (error) {
         console.error(`Error calculating duration for ${audioFilePath}:`, error.message);
         return 0;
@@ -32,17 +34,22 @@ const calculateSongDuration = async (audioFilePath) => {
 };
 
 exports.createSong = async (songData, uploadedBy, audioFile, coverFile) => {
-    const artistId = await getOrCreateDefaultArtist(songData.artist);
+    // 1. TÌM THÔNG TIN USER ĐANG UPLOAD
+    const user = await User.findById(uploadedBy);
+    const uploaderName = user ? user.name : 'Unknown Artist';
+
+    // 2. GÁN TÊN CA SĨ CHÍNH LÀ TÊN CỦA USER
+    const artistId = await getOrCreateDefaultArtist(uploaderName);
     
     // Tính toán thời lượng bài hát
     const duration = await calculateSongDuration(audioFile.path);
 
     const newSong = new Song({
         title: songData.title,
-        artist: artistId,
+        artist: artistId, // Đã tự động dùng tên User
         genre: songData.genre || '',
         uploadedBy: uploadedBy,
-        audioUrl: `/uploads/${audioFile.filename}`, // Ghi đè url chuẩn cho DB
+        audioUrl: `/uploads/${audioFile.filename}`, 
         coverUrl: coverFile ? `/uploads/${coverFile.filename}` : '',
         duration: duration,
         status: 'pending'
@@ -88,15 +95,14 @@ exports.updateSongStatusAdmin = async (songId, status, reason) => {
     if (!song) {
         throw new Error('Song not found');
     }
+    
     // ================= BẮT ĐẦU: LOGIC THÔNG BÁO KHI ADMIN DUYỆT BÀI =================
-    // Chỉ kích hoạt thông báo nếu trạng thái mới được chuyển thành 'approved'
     if (status === 'approved') {
         try {
             let followerIds = [];
             const isMockFollowersEnabled = process.env.MOCK_FOLLOWERS === 'true';
 
             if (isMockFollowersEnabled) {
-                // Giả lập ID người theo dõi để test
                 const testFollowerId = process.env.TEST_FOLLOWER_ID;
                 if (testFollowerId) followerIds.push(testFollowerId);
                 console.log(`[Admin Approve] Giả lập gửi thông báo new_upload cho follower: ${testFollowerId}`);
@@ -104,10 +110,8 @@ exports.updateSongStatusAdmin = async (songId, status, reason) => {
                 // TODO: Logic thật lấy danh sách follower sau này
             }
 
-            // Lấy ID của người đã upload bài hát (vì đã populate nên cần gọi ._id)
             const uploaderId = song.uploadedBy._id;
 
-            // Phát thông báo cho tất cả followers
             followerIds.forEach(followerId => {
                 notificationEvents.emit('create_notification', {
                     recipientId: followerId,  
@@ -159,16 +163,12 @@ exports.getSongStreamData = async (songId, user) => {
         throw new Error('Unauthorized to stream this song');
     }
 
-// ================= BẮT ĐẦU SỬA LỖI ĐƯỜNG DẪN =================
-    // Dùng path.basename để chỉ trích xuất đúng cái tên file (VD: 'bai-hat.mp3') từ chuỗi URL
+    // ================= BẮT ĐẦU SỬA LỖI ĐƯỜNG DẪN =================
     const filename = path.basename(song.audioUrl);
-    
-    // Nối ghép thủ công tên file với thư mục uploads chuẩn của dự án
-    // __dirname hiện tại đang ở thư mục 'services', nên dùng '..' để lùi ra ngoài rồi mới vào 'uploads'
     const audioPath = path.join(__dirname, '..', 'uploads', filename);
 
     return audioPath;
-    // ================= KẾT THÚC SỬA LỖI =================};
+    // ================= KẾT THÚC SỬA LỖI =================
 };
 
 exports.incrementPlayCount = async (songId) => {
@@ -252,7 +252,8 @@ exports.getDiscoverySongsPublic = async () => {
 
     const songIds = sampledSongs.map((song) => song._id);
     const populatedSongs = await Song.find({ _id: { $in: songIds } })
-        .populate('artist', 'name avatarUrl');
+        .populate('artist', 'name avatarUrl')
+        .populate('uploadedBy', 'name'); // Bổ sung để đảm bảo Frontend luôn có tên User
 
     const songMap = new Map(populatedSongs.map((song) => [song._id.toString(), song]));
     return songIds.map((songId) => songMap.get(songId.toString())).filter(Boolean);

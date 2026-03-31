@@ -78,13 +78,7 @@ const listUsers = async () => {
     return { count: users.length, users };
 };
 
-const getUserById = async (id) => {
-    const user = await User.findById(id).select('-password');
-    if (!user) {
-        throw new AppError('User not found', 404);
-    }
-    return user;
-};
+
 
 const updateUserById = async (id, { name, email, role }) => {
     const user = await User.findById(id);
@@ -111,6 +105,14 @@ const deleteUserById = async (id) => {
     await User.findByIdAndDelete(id);
     return { message: 'User deleted' };
 };
+const getUserById = async (id) => {
+  // Tìm user và loại bỏ password khỏi kết quả trả về
+  const user = await User.findById(id).select('-password');
+  if (!user) {
+    throw new Error('User not found');
+  }
+  return user;
+};
 
 module.exports = {
     getCurrentUser,
@@ -119,5 +121,6 @@ module.exports = {
     listUsers,
     getUserById,
     updateUserById,
-    deleteUserById
+    deleteUserById,
+    getUserById
 };

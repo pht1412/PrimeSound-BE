@@ -52,6 +52,15 @@ const deleteUser = asyncHandler(async (req, res) => {
     res.status(200).json(result);
 });
 
+const getUserById = async (req, res) => {
+  try {
+    const user = await userService.getUserById(req.params.id);
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(404).json({ message: error.message });
+  }
+};
+
 module.exports = {
     getMe,
     patchMe,
@@ -59,5 +68,6 @@ module.exports = {
     getAllUsers,
     getUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    getUserById
 };

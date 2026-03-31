@@ -1,5 +1,6 @@
 const User = require('../models/User.js');
 const { AppError } = require('../utils/AppError.js');
+const notificationEvents = require('../events/notificationEvents.js');
 
 const hasFollowing = (user, targetId) =>
     (user.following || []).some((id) => id.toString() === targetId.toString());
@@ -30,6 +31,19 @@ const followUser = async (currentUserId, targetUserId) => {
     targetUser.followers.push(currentUserId);
 
     await Promise.all([currentUser.save(), targetUser.save()]);
+
+    // ================= BẮT ĐẦU TÍCH HỢP THÔNG BÁO =================
+    try {
+      notificationEvents.emit('create_notification', {
+        recipientId: targetUserId,   // Gửi cho người được follow
+        senderId: currentUserId,     // Người vừa bấm nút follow
+        type: 'follow',              // Loại thông báo: follow
+        entityId: currentUserId      // Với follow, entityId có thể truyền ID người gửi
+      });
+    } catch (notifyError) {
+      console.error('Lỗi khi phát thông báo follow:', notifyError.message);
+    }
+    // ================= KẾT THÚC TÍCH HỢP THÔNG BÁO =================
 
     return { message: 'Theo dõi thành công' };
 };

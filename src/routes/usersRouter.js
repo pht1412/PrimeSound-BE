@@ -21,6 +21,7 @@ router.patch(
 );
 
 router.patch('/me/password', auth, userController.patchPassword);
+router.get('/:id', userController.getUserById);
 
 
 // ===== CRUD (ADMIN / INTERNAL) =====

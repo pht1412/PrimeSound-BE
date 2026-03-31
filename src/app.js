@@ -11,6 +11,8 @@ const playlistRoutes = require('./routes/playlist.route.js');
 const notificationRoutes = require('./routes/notification.route.js');
 const favoriteRoutes = require('./routes/favorite.routes.js');
 const repostRouter = require('./routes/repost.route.js');
+const followRoutes = require('./routes/follow.routes.js');
+const commentRoutes = require('./routes/comment.routes.js');
 
 const errorHandler = require('./middlewares/errorHandler.js');
 
@@ -41,6 +43,8 @@ app.use('/api/v1/playlists', playlistRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/favorites', favoriteRoutes);
 app.use('/api/v1/reposts', repostRouter);
+app.use('/api/v1/follow', followRoutes);
+app.use('/api/v1/songs', commentRoutes);
 
 
 // ================= TEST ROUTE =================
