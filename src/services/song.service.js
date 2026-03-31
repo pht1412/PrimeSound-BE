@@ -190,7 +190,7 @@ exports.incrementPlayCount = async (songId) => {
 exports.getLastestSongsPublic = async () => {
     return await Song.find({ status: 'approved' })
         .populate('artist', 'name avatarUrl')
-        .populate('uploadedBy', 'name')
+        .populate('uploadedBy', 'name avatar')
         .sort({ createdAt: -1 })
         .limit(10);
 };
@@ -200,7 +200,7 @@ exports.getAllApprovedSongs = async (page = 1, limit = 20) => {
     const [songs, total] = await Promise.all([
         Song.find({ status: 'approved' })
             .populate('artist', 'name avatarUrl')
-            .populate('uploadedBy', 'name')
+            .populate('uploadedBy', 'name avatar')
             .select('_id title genre audioUrl coverUrl duration playCount artist uploadedBy createdAt')
             .sort({ createdAt: -1 })
             .skip(skip)
@@ -221,7 +221,7 @@ exports.getAllApprovedSongs = async (page = 1, limit = 20) => {
 exports.getTrendingSongsPublic = async () => {
     return await Song.find({ status: 'approved' })
         .populate('artist', 'name avatarUrl')
-        .populate('uploadedBy', 'name')
+        .populate('uploadedBy', 'name avatar')
         .sort({ playCount: -1 })
         .limit(10);
 };
@@ -246,14 +246,14 @@ exports.getDiscoverySongsPublic = async () => {
             createdAt: 1,
             'artist.name': 1,
             'artist.avatarUrl': 1,
-            'uploadedBy.name': 1
+            'uploadedBy.name avatar': 1
         } }
     ]);
 
     const songIds = sampledSongs.map((song) => song._id);
     const populatedSongs = await Song.find({ _id: { $in: songIds } })
         .populate('artist', 'name avatarUrl')
-        .populate('uploadedBy', 'name'); // Bổ sung để đảm bảo Frontend luôn có tên User
+        .populate('uploadedBy', 'name avatar'); // Bổ sung để đảm bảo Frontend luôn có tên User
 
     const songMap = new Map(populatedSongs.map((song) => [song._id.toString(), song]));
     return songIds.map((songId) => songMap.get(songId.toString())).filter(Boolean);

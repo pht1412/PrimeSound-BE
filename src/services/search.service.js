@@ -1,34 +1,35 @@
 const Song = require('../models/song.model');
-const Artist = require('../models/artist.model');
+const User = require('../models/User'); // BẮT BUỘC IMPORT USER
 
-const searchAll = async (keyword, page, limit) => {
+const searchAll = async (keyword, page = 1, limit = 20) => {
   const searchRegex = new RegExp(keyword, 'i');
   
   // Công thức phân trang: Bỏ qua (page - 1) * limit kết quả ban đầu
   const skip = (page - 1) * limit;
 
-  // Bước 1: Tìm Nghệ sĩ
-  const matchedArtists = await Artist.find({ 
-    name: { $regex: searchRegex } 
+  // Bước 1: Tìm "Nghệ sĩ" (Thực chất là tìm trong bảng User)
+  const matchedUsers = await User.find({ 
+    name: { $regex: searchRegex },
   })
-  .select('_id name avatarUrl');
-  // .limit() và .skip() cho Artist nếu cần, nhưng thường artist ít nên có thể giữ nguyên hoặc limit nhỏ
+  .select('_id name avatar');
 
-  const matchedArtistIds = matchedArtists.map(artist => artist._id);
+  const matchedUserIds = matchedUsers.map(user => user._id);
 
-  // Bước 2: Tìm bài hát VÀ đếm tổng số lượng (để Frontend biết đường làm nút "Next")
+  // Bước 2: Tìm bài hát VÀ đếm tổng số lượng
   const songQuery = {
     $or: [
       { title: { $regex: searchRegex } }, 
-      ...(matchedArtistIds.length > 0 ? [{ artist: { $in: matchedArtistIds } }] : [])
+      // Tìm bài hát do các User vừa tìm được ở trên đăng tải
+      ...(matchedUserIds.length > 0 ? [{ uploadedBy: { $in: matchedUserIds } }] : [])
     ],
     status: 'approved'
   };
 
   const [songs, totalSongs] = await Promise.all([
     Song.find(songQuery)
+      .populate('uploadedBy', 'name avatar') // BẮT BUỘC ĐỂ HIỂN THỊ ẢNH VÀ CHUYỂN TRANG
       .populate('artist', 'name avatarUrl')
-      .select('_id title audioUrl coverUrl duration artist')
+      .select('_id title audioUrl coverUrl duration artist uploadedBy playCount createdAt')
       .skip(skip)   // Bỏ qua các bản ghi của trang trước
       .limit(limit), // Giới hạn số lượng của trang hiện tại
     Song.countDocuments(songQuery) // Đếm xem tổng cộng có bao nhiêu bài thỏa mãn
@@ -36,15 +37,16 @@ const searchAll = async (keyword, page, limit) => {
 
   // Trả về kết quả kèm cục Metadata phân trang
   return { 
+    success: true, // Bổ sung để khớp với if (response.success) ở Frontend
     data: {
       songs: songs, 
-      artists: matchedArtists 
+      artists: matchedUsers // Đổi matchedArtists thành matchedUsers
     },
     pagination: {
-      currentPage: page,
+      currentPage: Number(page),
       totalPages: Math.ceil(totalSongs / limit),
       totalItems: totalSongs,
-      itemsPerPage: limit
+      itemsPerPage: Number(limit)
     }
   };
 };

@@ -52,14 +52,14 @@ const deleteUser = asyncHandler(async (req, res) => {
     res.status(200).json(result);
 });
 
-const getUserById = async (req, res) => {
-  try {
+const getUserById = asyncHandler(async (req, res) => {
     const user = await userService.getUserById(req.params.id);
+    if (!user) {
+        // Chốt chặn an toàn: Bắt buộc phải có phản hồi kể cả khi không tìm thấy
+        return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
+    }
     res.status(200).json(user);
-  } catch (error) {
-    res.status(404).json({ message: error.message });
-  }
-};
+});
 
 module.exports = {
     getMe,
