@@ -105,13 +105,10 @@ const deleteUserById = async (id) => {
     await User.findByIdAndDelete(id);
     return { message: 'User deleted' };
 };
+
 const getUserById = async (id) => {
-  // Tìm user và loại bỏ password khỏi kết quả trả về
   const user = await User.findById(id).select('-password');
-  if (!user) {
-    throw new Error('User not found');
-  }
-  return user;
+  return user; // Cứ trả về user (dù có thể là null), để Controller tự quyết định
 };
 
 module.exports = {

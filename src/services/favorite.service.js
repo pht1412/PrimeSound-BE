@@ -3,7 +3,6 @@ const Song = require('../models/song.model');
 const notificationEvents = require('../events/notificationEvents.js');
 
 // 1. Thả tim (Like)
-// 1. Thả tim (Like)
 exports.likeSong = async (userId, songId) => {
     const songExists = await Song.findById(songId);
     if (!songExists) throw new Error("Song not found");

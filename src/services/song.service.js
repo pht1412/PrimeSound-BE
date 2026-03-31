@@ -25,8 +25,8 @@ const calculateSongDuration = async (audioFilePath) => {
         }
 
         const metadata = await parseFile(audioFilePath);
-        const duration = metadata.format.duration || 0; 
-        return Math.round(duration); 
+        const duration = metadata.format.duration || 0;
+        return Math.round(duration);
     } catch (error) {
         console.error(`Error calculating duration for ${audioFilePath}:`, error.message);
         return 0;
@@ -40,7 +40,7 @@ exports.createSong = async (songData, uploadedBy, audioFile, coverFile) => {
 
     // 2. GÁN TÊN CA SĨ CHÍNH LÀ TÊN CỦA USER
     const artistId = await getOrCreateDefaultArtist(uploaderName);
-    
+
     // Tính toán thời lượng bài hát
     const duration = await calculateSongDuration(audioFile.path);
 
@@ -49,7 +49,7 @@ exports.createSong = async (songData, uploadedBy, audioFile, coverFile) => {
         artist: artistId, // Đã tự động dùng tên User
         genre: songData.genre || '',
         uploadedBy: uploadedBy,
-        audioUrl: `/uploads/${audioFile.filename}`, 
+        audioUrl: `/uploads/${audioFile.filename}`,
         coverUrl: coverFile ? `/uploads/${coverFile.filename}` : '',
         duration: duration,
         status: 'pending'
@@ -95,37 +95,51 @@ exports.updateSongStatusAdmin = async (songId, status, reason) => {
     if (!song) {
         throw new Error('Song not found');
     }
-    
+
     // ================= BẮT ĐẦU: LOGIC THÔNG BÁO KHI ADMIN DUYỆT BÀI =================
     if (status === 'approved') {
         try {
             let followerIds = [];
             const isMockFollowersEnabled = process.env.MOCK_FOLLOWERS === 'true';
 
+            // Lấy ID của người upload bài hát
+            const uploaderId = song.uploadedBy._id || song.uploadedBy;
+
             if (isMockFollowersEnabled) {
+                // CHẾ ĐỘ GIẢ LẬP
                 const testFollowerId = process.env.TEST_FOLLOWER_ID;
                 if (testFollowerId) followerIds.push(testFollowerId);
-                console.log(`[Admin Approve] Giả lập gửi thông báo new_upload cho follower: ${testFollowerId}`);
+                console.log(`[Admin Approve] Giả lập gửi thông báo cho follower: ${testFollowerId}`);
             } else {
-                // TODO: Logic thật lấy danh sách follower sau này
+                // CHẾ ĐỘ THẬT: Tìm User tác giả và lấy mảng followers của họ
+                // (Vì file song.service.js em đã import User ở dòng 6 rồi nên gọi luôn)
+                const uploader = await User.findById(uploaderId)
+                    .select('followers') // Chỉ lấy đúng field followers cho nhẹ RAM
+                    .lean();
+
+                if (uploader && uploader.followers && uploader.followers.length > 0) {
+                    followerIds = uploader.followers;
+                    console.log(`[Admin Approve] Tìm thấy ${followerIds.length} người theo dõi hợp lệ.`);
+                } else {
+                    console.log(`[Admin Approve] Tác giả chưa có người theo dõi nào.`);
+                }
             }
 
-            const uploaderId = song.uploadedBy._id;
-
+            // Phát sự kiện thông báo cho từng follower
             followerIds.forEach(followerId => {
                 notificationEvents.emit('create_notification', {
-                    recipientId: followerId,  
-                    senderId: uploaderId,     
+                    recipientId: followerId,
+                    senderId: uploaderId,
                     type: 'new_upload',
-                    entityId: song._id       
+                    entityId: song._id
                 });
             });
+
         } catch (notifyError) {
             console.error('Lỗi khi phát thông báo duyệt bài:', notifyError.message);
         }
     }
     // ================= KẾT THÚC: LOGIC THÔNG BÁO =================
-
     return song;
 };
 
@@ -234,20 +248,22 @@ exports.getDiscoverySongsPublic = async () => {
         { $lookup: { from: 'users', localField: 'uploadedBy', foreignField: '_id', as: 'uploadedBy' } },
         { $unwind: { path: '$artist', preserveNullAndEmptyArrays: true } },
         { $unwind: { path: '$uploadedBy', preserveNullAndEmptyArrays: true } },
-        { $project: { 
-            _id: 1,
-            title: 1,
-            genre: 1,
-            audioUrl: 1,
-            coverUrl: 1,
-            duration: 1,
-            playCount: 1,
-            status: 1,
-            createdAt: 1,
-            'artist.name': 1,
-            'artist.avatarUrl': 1,
-            'uploadedBy.name avatar': 1
-        } }
+        {
+            $project: {
+                _id: 1,
+                title: 1,
+                genre: 1,
+                audioUrl: 1,
+                coverUrl: 1,
+                duration: 1,
+                playCount: 1,
+                status: 1,
+                createdAt: 1,
+                'artist.name': 1,
+                'artist.avatarUrl': 1,
+                'uploadedBy.name avatar': 1
+            }
+        }
     ]);
 
     const songIds = sampledSongs.map((song) => song._id);

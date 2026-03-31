@@ -32,10 +32,6 @@ const getAllUsers = asyncHandler(async (req, res) => {
     res.status(200).json(result);
 });
 
-const getUser = asyncHandler(async (req, res) => {
-    const user = await userService.getUserById(req.params.id);
-    res.status(200).json(user);
-});
 
 const updateUser = asyncHandler(async (req, res) => {
     const { name, email, role } = req.body;
@@ -55,10 +51,17 @@ const deleteUser = asyncHandler(async (req, res) => {
 const getUserById = asyncHandler(async (req, res) => {
     const user = await userService.getUserById(req.params.id);
     if (!user) {
-        // Chốt chặn an toàn: Bắt buộc phải có phản hồi kể cả khi không tìm thấy
-        return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
+        return res.status(404).json({ 
+            success: false, 
+            message: "Không tìm thấy người dùng" 
+        });
     }
-    res.status(200).json(user);
+    
+    // Gói dữ liệu vào object có trường data để Frontend dễ dàng bóc tách
+    res.status(200).json({
+        success: true,
+        data: user
+    });
 });
 
 module.exports = {
@@ -66,7 +69,6 @@ module.exports = {
     patchMe,
     patchPassword,
     getAllUsers,
-    getUser,
     updateUser,
     deleteUser,
     getUserById
