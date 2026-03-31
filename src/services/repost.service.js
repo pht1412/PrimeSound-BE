@@ -74,6 +74,10 @@ const getRepostsByUser = async (userId) => {
         select: 'name stageName',
       }
     })
+    .populate({
+      path: 'user',
+      select: 'name avatar',
+    })
     .sort({ createdAt: -1 });
 
   return reposts;
