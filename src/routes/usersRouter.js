@@ -27,7 +27,6 @@ router.get('/:id', userController.getUserById);
 // ===== CRUD (ADMIN / INTERNAL) =====
 // đặt sau /me để tránh conflict với :id
 router.get('/', auth, userController.getAllUsers);
-router.get('/:id', auth, userController.getUser);
 router.put('/:id', auth, userController.updateUser);
 router.delete('/:id', auth, userController.deleteUser);
 

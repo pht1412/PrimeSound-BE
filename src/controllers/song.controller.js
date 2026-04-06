@@ -114,3 +114,18 @@ exports.getAllSongs = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+// Thêm vào cuối file song.controller.js
+exports.getSongsByUserId = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        // Gọi service em đã viết sẵn
+        const allSongs = await songService.getSongsByUser(userId);
+        
+        // Cực kỳ quan trọng: Chỉ hiển thị bài đã duyệt (approved) trên trang cá nhân
+        const publicSongs = allSongs.filter(song => song.status === 'approved');
+        
+        res.status(200).json({ success: true, data: publicSongs });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

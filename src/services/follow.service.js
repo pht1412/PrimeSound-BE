@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../models/User.js');
 const { AppError } = require('../utils/AppError.js');
 const notificationEvents = require('../events/notificationEvents.js');
@@ -5,76 +6,118 @@ const notificationEvents = require('../events/notificationEvents.js');
 const hasFollowing = (user, targetId) =>
     (user.following || []).some((id) => id.toString() === targetId.toString());
 
+// ==========================================
+// 1. HÀM FOLLOW BẰNG TRANSACTION
+// ==========================================
 const followUser = async (currentUserId, targetUserId) => {
     if (currentUserId.toString() === targetUserId.toString()) {
         throw new AppError('Bạn không thể tự theo dõi chính mình', 400);
     }
 
-    const targetUser = await User.findById(targetUserId);
-    if (!targetUser) {
-        throw new AppError('Người dùng không tồn tại', 404);
+    // Khởi tạo Session cho Transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        // Lấy thông tin user trong phạm vi của session hiện tại
+        const targetUser = await User.findById(targetUserId).session(session);
+        if (!targetUser) throw new AppError('Người dùng không tồn tại', 404);
+
+        const currentUser = await User.findById(currentUserId).session(session);
+        if (!currentUser) throw new AppError('Người dùng không tồn tại', 404);
+
+        if (hasFollowing(currentUser, targetUserId)) {
+            throw new AppError('Bạn đã theo dõi người này rồi', 400);
+        }
+
+        // Dùng $addToSet: Chỉ thêm vào mảng nếu chưa tồn tại (chống trùng lặp & Race Condition)
+        // Lưu ý: Phải truyền { session } vào options của hàm update
+        // 1. Cập nhật cho Fan bằng findByIdAndUpdate
+        const updatedFan = await User.findByIdAndUpdate(
+            currentUserId,
+            { $addToSet: { following: targetUserId } },
+            { session, new: true } // new: true để trả về data SAU KHI update
+        );
+
+        // 2. Cập nhật cho Idol bằng findByIdAndUpdate
+        const updatedIdol = await User.findByIdAndUpdate(
+            targetUserId,
+            { $addToSet: { followers: currentUserId } },
+            { session, new: true }
+        );
+
+        // NẾU MỌI THỨ THÀNH CÔNG -> Xác nhận giao dịch
+        await session.commitTransaction();
+
+    } catch (error) {
+        // NẾU CÓ LỖI XẢY RA -> Hoàn tác mọi thay đổi trong DB
+        await session.abortTransaction();
+        throw error; // Ném lỗi ra ngoài cho Controller xử lý
+    } finally {
+        // Luôn luôn đóng session để giải phóng tài nguyên
+        session.endSession();
     }
-
-    const currentUser = await User.findById(currentUserId);
-    if (!currentUser) {
-        throw new AppError('Người dùng không tồn tại', 404);
-    }
-
-    if (hasFollowing(currentUser, targetUserId)) {
-        throw new AppError('Bạn đã theo dõi người này rồi', 400);
-    }
-
-    if (!currentUser.following) currentUser.following = [];
-    if (!targetUser.followers) targetUser.followers = [];
-
-    currentUser.following.push(targetUserId);
-    targetUser.followers.push(currentUserId);
-
-    await Promise.all([currentUser.save(), targetUser.save()]);
 
     // ================= BẮT ĐẦU TÍCH HỢP THÔNG BÁO =================
+    // Chạy ngoài transaction vì socket không cần rollback database
     try {
-      notificationEvents.emit('create_notification', {
-        recipientId: targetUserId,   // Gửi cho người được follow
-        senderId: currentUserId,     // Người vừa bấm nút follow
-        type: 'follow',              // Loại thông báo: follow
-        entityId: currentUserId      // Với follow, entityId có thể truyền ID người gửi
-      });
+        notificationEvents.emit('create_notification', {
+            recipientId: targetUserId,
+            senderId: currentUserId,
+            type: 'follow',
+            entityId: currentUserId
+        });
     } catch (notifyError) {
-      console.error('Lỗi khi phát thông báo follow:', notifyError.message);
+        console.error('Lỗi khi phát thông báo follow:', notifyError.message);
     }
     // ================= KẾT THÚC TÍCH HỢP THÔNG BÁO =================
 
     return { message: 'Theo dõi thành công' };
 };
 
+// ==========================================
+// 2. HÀM UNFOLLOW BẰNG TRANSACTION
+// ==========================================
 const unfollowUser = async (currentUserId, targetUserId) => {
     if (currentUserId.toString() === targetUserId.toString()) {
         throw new AppError('Bạn không thể hủy theo dõi chính mình', 400);
     }
 
-    const targetUser = await User.findById(targetUserId);
-    if (!targetUser) {
-        throw new AppError('Người dùng không tồn tại', 404);
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const targetUser = await User.findById(targetUserId).session(session);
+        if (!targetUser) throw new AppError('Người dùng không tồn tại', 404);
+
+        const currentUser = await User.findById(currentUserId).session(session);
+        if (!currentUser) throw new AppError('Người dùng không tồn tại', 404);
+
+        if (!hasFollowing(currentUser, targetUserId)) {
+            throw new AppError('Bạn chưa theo dõi người này', 400);
+        }
+
+        // Dùng $pull: Tìm và xóa phần tử khỏi mảng
+        await User.updateOne(
+            { _id: currentUserId },
+            { $pull: { following: targetUserId } },
+            { session }
+        );
+
+        await User.updateOne(
+            { _id: targetUserId },
+            { $pull: { followers: currentUserId } },
+            { session }
+        );
+
+        await session.commitTransaction();
+
+    } catch (error) {
+        await session.abortTransaction();
+        throw error;
+    } finally {
+        session.endSession();
     }
-
-    const currentUser = await User.findById(currentUserId);
-    if (!currentUser) {
-        throw new AppError('Người dùng không tồn tại', 404);
-    }
-
-    if (!hasFollowing(currentUser, targetUserId)) {
-        throw new AppError('Bạn chưa theo dõi người này', 400);
-    }
-
-    currentUser.following = (currentUser.following || []).filter(
-        id => id.toString() !== targetUserId.toString()
-    );
-    targetUser.followers = (targetUser.followers || []).filter(
-        id => id.toString() !== currentUserId.toString()
-    );
-
-    await Promise.all([currentUser.save(), targetUser.save()]);
 
     return { message: 'Hủy theo dõi thành công' };
 };

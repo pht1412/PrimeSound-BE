@@ -12,7 +12,7 @@ router.get('/latest', songController.getLatestSongs);
 router.get('/trending', songController.getTrendingSongs);
 router.get('/discovery', songController.getDiscoverySongs);
 router.get('/', songController.getAllSongs);
-
+router.get('/user/:userId', songController.getSongsByUserId);
 // Cần đăng nhập để upload, xem bài của mình
 router.post(
     '/',
