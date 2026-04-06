@@ -5,6 +5,7 @@ const commentController = require('../controllers/comment.controller');
 const repostController = require('../controllers/repost.controller');
 const { auth, optionalAuth, requireAdmin } = require('../middlewares/auth');
 const upload = require('../middlewares/multer.middleware');
+const streamSongMiddleware = require('../middlewares/streamSong.middleware');
 
 // Public routes (có thể có optionalAuth để xem bài chưa duyệt nếu là uploader)
 router.get('/latest', songController.getLatestSongs);
@@ -27,7 +28,7 @@ router.get('/admin/list', auth, requireAdmin, songController.getSongsByStatus);
 router.patch('/admin/:id/status', auth, requireAdmin, songController.updateSongStatus);
 
 // Chi tiết, stream, play-count - dùng optionalAuth (user có thể null)
-router.get('/:id/stream', optionalAuth, songController.streamSong);
+router.get('/:id/stream', optionalAuth, streamSongMiddleware);
 router.get('/:id', optionalAuth, songController.getSongDetails);
 router.post('/:id/play-count', songController.incrementPlayCount);
 

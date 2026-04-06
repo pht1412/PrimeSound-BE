@@ -13,6 +13,7 @@ const favoriteRoutes = require('./routes/favorite.routes.js');
 const repostRouter = require('./routes/repost.route.js');
 const followRoutes = require('./routes/follow.routes.js');
 const commentRoutes = require('./routes/comment.routes.js');
+const historyRoutes = require('./routes/history.routes.js');
 
 const errorHandler = require('./middlewares/errorHandler.js');
 
@@ -45,6 +46,7 @@ app.use('/api/v1/favorites', favoriteRoutes);
 app.use('/api/v1/reposts', repostRouter);
 app.use('/api/v1/follow', followRoutes);
 app.use('/api/v1/songs', commentRoutes);
+app.use('/api/v1/history', historyRoutes);
 
 
 // ================= TEST ROUTE =================
