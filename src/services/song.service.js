@@ -227,34 +227,12 @@ exports.getTrendingSongsPublic = async () => {
 };
 
 exports.getDiscoverySongsPublic = async () => {
-    const sampledSongs = await Song.aggregate([
-        { $match: { status: 'approved' } },
-        { $sample: { size: 10 } },
-        { $lookup: { from: 'artists', localField: 'artist', foreignField: '_id', as: 'artist' } },
-        { $lookup: { from: 'users', localField: 'uploadedBy', foreignField: '_id', as: 'uploadedBy' } },
-        { $unwind: { path: '$artist', preserveNullAndEmptyArrays: true } },
-        { $unwind: { path: '$uploadedBy', preserveNullAndEmptyArrays: true } },
-        { $project: { 
-            _id: 1,
-            title: 1,
-            genre: 1,
-            audioUrl: 1,
-            coverUrl: 1,
-            duration: 1,
-            playCount: 1,
-            status: 1,
-            createdAt: 1,
-            'artist.name': 1,
-            'artist.avatarUrl': 1,
-            'uploadedBy.name avatar': 1
-        } }
-    ]);
-
-    const songIds = sampledSongs.map((song) => song._id);
-    const populatedSongs = await Song.find({ _id: { $in: songIds } })
+    return await Song.find({ status: 'approved' })
         .populate('artist', 'name avatarUrl')
-        .populate('uploadedBy', 'name avatar'); // Bổ sung để đảm bảo Frontend luôn có tên User
-
-    const songMap = new Map(populatedSongs.map((song) => [song._id.toString(), song]));
-    return songIds.map((songId) => songMap.get(songId.toString())).filter(Boolean);
+        .populate('uploadedBy', 'name avatar')
+        .limit(10)
+        .exec()
+        .then(songs => {
+            return songs.sort(() => Math.random() - 0.5);
+        });
 };

@@ -1,4 +1,3 @@
-const fs = require('fs');
 const songService = require('../services/song.service');
 
 exports.uploadSong = async (req, res) => {
@@ -53,43 +52,6 @@ exports.updateSongStatus = async (req, res) => {
             return res.status(404).json({ message: error.message });
         }
         res.status(500).json({ message: error.message });
-    }
-};
-
-exports.streamSong = async (req, res) => {
-    try {
-        const audioPath = await songService.getSongStreamData(req.params.id, req.user);
-        
-        const stat = fs.statSync(audioPath);
-        const fileSize = stat.size;
-        const range = req.headers.range;
-
-        if (range) {
-            const parts = range.replace(/bytes=/, "").split("-");
-            const start = parseInt(parts[0], 10);
-            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-            const chunksize = (end - start) + 1;
-            const file = fs.createReadStream(audioPath, { start, end });
-            const head = {
-                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-                'Accept-Ranges': 'bytes',
-                'Content-Length': chunksize,
-                'Content-Type': 'audio/mpeg',
-            };
-            res.writeHead(206, head);
-            file.pipe(res);
-        } else {
-            const head = {
-                'Content-Length': fileSize,
-                'Content-Type': 'audio/mpeg',
-            };
-            res.writeHead(200, head);
-            fs.createReadStream(audioPath).pipe(res);
-        }
-    } catch (error) {
-        const status = (error.message === "Song not found") ? 404 : 
-                       (error.message === "Unauthorized to stream this song") ? 403 : 500;
-        res.status(status).json({ message: error.message });
     }
 };
 
