@@ -1,12 +1,13 @@
+const dotenv = require('dotenv');
+dotenv.config();
 const mongoose = require('mongoose');
 const http = require('http');
 const app = require('./src/app.js');
 const socket = require('./src/socket.js');
-const dotenv = require('dotenv');
-dotenv.config();
+
 
 const PORT = process.env.PORT || 3000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/primesound';
+const MONGO_URI = process.env.MONGO_URI ;
 
 // 1. Tạo server HTTP từ app Express
 const server = http.createServer(app);
